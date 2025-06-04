@@ -85,11 +85,14 @@ services:
       - app-network-microservice
     command: >
       sh -c "
-      sleep 5 &&
+      until mysqladmin ping -h mysql-notification --silent; do
+        echo 'Waiting for MySQL...';
+        sleep 3;
+      done &&
       php artisan migrate --force &&
+      php-fpm &
       php artisan queue:work --queue=default --tries=3 --sleep=3 --timeout=60
       "
-      service-notification:
 
 networks:
   app-network-microservice:

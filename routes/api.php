@@ -9,5 +9,5 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-Route::get('/notifications-member-logs', [NotificationLogController::class, 'logsMember']);
-Route::get('/notifications-mitra-logs', [NotificationLogController::class, 'logsMitra']);
+Route::get('/notifications/notifications-member-logs', [NotificationLogController::class, 'logsMember']);
+Route::get('/notifications/notifications-mitra-logs', [NotificationLogController::class, 'logsMitra']);

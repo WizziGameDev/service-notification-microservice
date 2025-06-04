@@ -10,23 +10,42 @@ class NotificationLogController extends Controller
 {
     public function logsMember()
     {
-        $notifications = NotificationMemberLog::latest()->get(); // Urut terbaru
-        return response()->json([
-            'status' => 200,
-            'message' => 'Notification logs member retrieved successfully',
-            'data' => $notifications,
-            'errors' => null,
-        ]);
+        try {
+            $notifications = NotificationMemberLog::latest()->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Notification logs member retrieved successfully',
+                'data' => $notifications,
+                'errors' => null,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong',
+                'errors' => $e->getMessage(),
+                'data' => null,
+            ]);
+        }
     }
 
     public function logsMitra()
     {
-        $notifications = NotificationMitraLog::latest()->get(); // Urut terbaru
-        return response()->json([
-            'status' => 200,
-            'message' => 'Notification logs mitra retrieved successfully',
-            'data' => $notifications,
-            'errors' => null,
-        ]);
+        try {
+            $notifications = NotificationMitraLog::latest()->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Notification logs mitra retrieved successfully',
+                'data' => $notifications,
+                'errors' => null,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong',
+                'errors' => $e->getMessage(),
+                'data' => null,
+            ]);
+        }
     }
 }

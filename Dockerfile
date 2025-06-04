@@ -1,7 +1,18 @@
+# ===== BUILD STAGE =====
+FROM composer:2.7 AS build
+
+WORKDIR /app
+
+COPY . .
+
+# Install dependencies (include RabbitMQ + Twilio)
+RUN composer require vladimir-yuldashev/laravel-queue-rabbitmq twilio/sdk --no-interaction --ignore-platform-req=ext-sockets \
+    && composer install --ignore-platform-req=ext-sockets --prefer-dist --no-dev --optimize-autoloader
+
 # ===== APP STAGE =====
 FROM php:8.2-fpm-alpine
 
-# Install ekstensi PHP tambahan
+# Install PHP extensions & system dependencies
 RUN apk add --no-cache \
     bash \
     curl \
@@ -11,23 +22,21 @@ RUN apk add --no-cache \
     freetype-dev \
     libzip-dev \
     icu-dev \
+    nodejs \
+    npm \
     linux-headers \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo pdo_mysql intl gd zip sockets
 
-# Install Composer di App Stage
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Force PHP-FPM to listen on all interfaces (avoid 127.0.0.1 issue)
+RUN echo "listen = 0.0.0.0:9000" > /usr/local/etc/php-fpm.d/zz-docker.conf
 
 WORKDIR /var/www
 
-# Copy source code langsung
-COPY . .
+# Copy code & vendor from build stage
+COPY --from=build /app /var/www
 
-# Install dependency Laravel, RabbitMQ, Twilio, dsb.
-RUN composer require vladimir-yuldashev/laravel-queue-rabbitmq:"^14.2" twilio/sdk \
-    && composer install --ignore-platform-req=ext-sockets --prefer-dist --no-dev --optimize-autoloader
-
-# Set permission
+# Set permissions for Laravel
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage /var/www/bootstrap/cache
 
