@@ -1,0 +1,99 @@
+version: '3.9'
+
+services:
+  nginx-notification:
+    image: nginx:alpine
+    container_name: nginx-notification
+    ports:
+      - "9006:80"
+    volumes:
+      - .:/var/www
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - service-notification
+    networks:
+      - app-network-microservice
+
+  mysql-notification:
+    image: mysql:8.0
+    container_name: mysql-notification
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345
+      MYSQL_DATABASE: db_tubes_notification
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 35s
+      timeout: 30s
+      retries: 5
+    volumes:
+      - mysql_notification_data:/var/lib/mysql
+    networks:
+      app-network-microservice:
+        aliases:
+          - mysql-notification
+
+  phpmyadmin-notification:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin-notification
+    environment:
+      PMA_HOST: mysql-notification
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: 12345
+    ports:
+      - "8088:80"
+    depends_on:
+      - mysql-notification
+    networks:
+      - app-network-microservice
+
+  service-notification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: service-notification
+    volumes:
+      - .:/var/www
+    environment:
+      APP_ENV: local
+      APP_KEY: base64:TTTn27QFRaokwDBlpDgFNyREZIn1BDkSR3IEroT4u7k=
+      APP_DEBUG: "true"
+      APP_URL: http://localhost
+      APP_NAME: Laravel-Notification
+      LOG_CHANNEL: stdout
+
+      # Database Config
+      DB_CONNECTION: mysql
+      DB_HOST: mysql-notification
+      DB_PORT: 3306
+      DB_DATABASE: db_tubes_notification
+      DB_USERNAME: root
+      DB_PASSWORD: 12345
+
+      # Queue Config (RabbitMQ)
+      QUEUE_CONNECTION: rabbitmq
+      RABBITMQ_HOST: rabbitmq-transaction
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: admin
+      RABBITMQ_PASSWORD: admin12345
+      RABBITMQ_VHOST: /myvhost
+      TWILIO_SID:  # Your SID Twilio
+      TWILIO_TOKEN:  # Your TOKEN Twilio
+    depends_on:
+      mysql-notification:
+        condition: service_healthy
+    networks:
+      - app-network-microservice
+    command: >
+      sh -c "
+      sleep 5 &&
+      php artisan migrate --force &&
+      php artisan queue:work --queue=default --tries=3 --sleep=3 --timeout=60
+      "
+      service-notification:
+
+networks:
+  app-network-microservice:
+    external: true
+
+volumes:
+  mysql_notification_data:
